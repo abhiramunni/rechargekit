@@ -25,3 +25,5 @@ Single self-contained `index.html` (plus two photos in the repo root, referenced
 ## QA
 
 66/66 headless jsdom assertions pass (`node qa-test.js`), `node --check` clean, zero uncaught JS errors, no pictographic emoji. Hand-verified: validity countdowns (Jio 4d, Tata Play 7d, Vi 9d, Airtel 10d from 21 Nov 2026), per-day prices (BSNL 197 → ₹2.81, Jio 239 → ₹8.54, Jio 899 → ₹9.99, Airtel 979 → ₹11.65), November spend ₹698, mark-as-recharged rolls Jio 25 Nov + 28 days to 23 Dec 2026.
+
+Published in 24 commits on main, all authored by abhiramunni.
