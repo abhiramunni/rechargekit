@@ -438,4 +438,81 @@ footer .fine{font-size:12.5px;color:var(--mut);max-width:520px}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<script>
+(function(){
+'use strict';
+var LS_KEY = 'rechargekit-v1';
+
+/* ---------- data ---------- */
+/* Plan prices are indicative November 2026 prepaid tariffs, India. */
+var PLANS = [
+  {op:'Jio', price:239, data:1.5, val:28, note:'Unlimited calls'},
+  {op:'Jio', price:299, data:1.5, val:28, note:'JioTV & JioCinema included'},
+  {op:'Jio', price:349, data:2, val:28, note:'Unlimited 5G'},
+  {op:'Jio', price:899, data:2, val:90, note:'Unlimited 5G · 90 days'},
+  {op:'Airtel', price:299, data:1.5, val:28, note:'Airtel Xstream included'},
+  {op:'Airtel', price:349, data:2, val:28, note:'Unlimited 5G'},
+  {op:'Airtel', price:979, data:2, val:84, note:'84 days · OTT bundled'},
+  {op:'Vi', price:299, data:1.5, val:28, note:'Weekend data rollover'},
+  {op:'Vi', price:359, data:2, val:28, note:'Binge-all-night data'},
+  {op:'Vi', price:859, data:1.5, val:84, note:'84 days · 1.5 GB a day'},
+  {op:'BSNL', price:197, data:2, val:70, note:'70 days · check coverage first'},
+  {op:'BSNL', price:299, data:3, val:30, note:'3 GB a day · 30 days'}
+];
+var GUIDES = [
+  {t:'Validity beats talktime', d:'A ₹10 top-up adds balance, not days. Only a validity plan keeps the SIM alive — check the expiry date, not the balance, before you travel.'},
+  {t:'The 90-day rule', d:'A prepaid number with no recharge for 90 days can be disconnected and given to someone else. Keep at least a small validity plan on every SIM you want to keep.'},
+  {t:'Daily data does not roll over', d:'On most prepaid plans, unused data expires at midnight. A 1.5 GB-a-day plan is not 42 GB a month — it is 1.5 GB, fresh, every morning.'},
+  {t:'Porting? Keep the old SIM alive', d:'Porting takes up to 3 days. Do not let the old plan expire mid-port or the request can fail — recharge first, port after.'},
+  {t:'DTH: pay for what you watch', d:'Under TRAI rules you can pick channels a-la-carte. A ₹299 pack often carries 40 channels you never open — the broadcaster bouquet may be cheaper.'},
+  {t:'Auto-pay can double-charge', d:'Broadband and DTH auto-pay renew on the bill date even if you recharged manually. Check the next bill date after every manual payment.'}
+];
+var OP_COLORS = {Jio:'#1f4e79', Airtel:'#b3372a', Vi:'#7a4a21', 'Tata Play':'#8a6d1f', BSNL:'#3f7a4e', Other:'#5d4a36'};
+
+/* ---------- utils ---------- */
+function $(s){ return document.querySelector(s); }
+function $all(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+function parseLocal(s){ var p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+function isoLocal(d){ var m = d.getMonth()+1, day = d.getDate(); return d.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(day<10?'0':'')+day; }
+function todayISO(){ return isoLocal(new Date()); }
+function startOfToday(){ var n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+function daysUntil(dateStr){ return Math.floor((parseLocal(dateStr) - startOfToday()) / 86400000); }
+function fmtDate(s){ var d = parseLocal(s); var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear(); }
+function inr(n){ return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function perDay(p){ return +(p.price / p.val).toFixed(2); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function safeScroll(el){ try { if (el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'start'}); } catch(e){} }
+function toast(msg){ var t = $('#toast'); if(!t) return; t.textContent = msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 2600); }
+
+/* ---------- state ---------- */
+function seedState(){
+  return {
+    v:1, samples:true, budget:1500, dataToday:0.9,
+    usage:[1.2, 1.5, 0.9, 1.4, 1.1, 1.5, 0.9],
+    conns:[
+      {id:'jio', op:'Jio', name:'Jio — Primary mobile', type:'Prepaid mobile', plan:'₹299 · 1.5 GB/day', price:299, dataPerDay:1.5, validity:28, recharged:'2026-10-28', validTill:'2026-11-25', sample:true},
+      {id:'airtel-fiber', op:'Airtel', name:'Airtel Xstream Fiber', type:'Broadband', plan:'₹499/mo · 40 Mbps · unlimited', price:499, dataPerDay:0, validity:30, recharged:'2026-11-01', validTill:'2026-12-01', sample:true},
+      {id:'tataplay', op:'Tata Play', name:'Tata Play DTH', type:'DTH', plan:'₹299/mo · Hindi + Sports pack', price:299, dataPerDay:0, validity:30, recharged:'2026-10-28', validTill:'2026-11-28', sample:true},
+      {id:'vi', op:'Vi', name:'Vi — Second SIM', type:'Prepaid mobile', plan:'₹199 · 1 GB/day', price:199, dataPerDay:1, validity:28, recharged:'2026-11-03', validTill:'2026-11-30', sample:true}
+    ],
+    log:[
+      {date:'2026-11-03', conn:'Vi — Second SIM', amount:199, sample:true},
+      {date:'2026-11-01', conn:'Airtel Xstream Fiber', amount:499, sample:true},
+      {date:'2026-10-28', conn:'Jio — Primary mobile', amount:299, sample:true},
+      {date:'2026-10-28', conn:'Tata Play DTH', amount:299, sample:true},
+      {date:'2026-10-01', conn:'Airtel Xstream Fiber', amount:499, sample:true},
+      {date:'2026-09-30', conn:'Jio — Primary mobile', amount:299, sample:true},
+      {date:'2026-09-30', conn:'Tata Play DTH', amount:299, sample:true},
+      {date:'2026-09-29', conn:'Vi — Second SIM', amount:199, sample:true}
+    ]
+  };
+}
+var state;
+try {
+  var raw = localStorage.getItem(LS_KEY);
+  state = raw ? JSON.parse(raw) : seedState();
+} catch(e) { state = seedState(); }
+if (!state || !state.conns) state = seedState();
+function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){} }
+save(); // persist the seed on first boot so a refresh keeps the same data
 <!-- @@NEXT@@ -->
