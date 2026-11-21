@@ -275,4 +275,48 @@ footer .fine{font-size:12.5px;color:var(--mut);max-width:520px}
     </div>
   </div>
 </div>
+<main class="wrap">
+<section class="sec" id="connections">
+  <div class="sec-head">
+    <div>
+      <p class="eyebrow">My connections</p>
+      <h2>Four connections. One dashboard.</h2>
+      <p>Tap a card for the full detail — plan, data left, and when to recharge next.</p>
+    </div>
+    <button class="btn ghost sm" onclick="RechargeKit.openConnForm()">+ Add connection</button>
+  </div>
+  <div class="conn-grid" id="connGrid"></div>
+</section>
+
+<section class="sec" id="data">
+  <div class="sec-head">
+    <div>
+      <p class="eyebrow">Today's data</p>
+      <h2>How much of today's data is gone?</h2>
+      <p>Your Jio plan gives 1.5 GB a day. Log what you have used and the gauge tells you what is left before midnight.</p>
+    </div>
+  </div>
+  <div class="data-split">
+    <div class="card data-gauge">
+      <div class="gauge-top">
+        <div>
+          <p class="eyebrow">Jio · 1.5 GB a day</p>
+          <p class="gauge-big" style="margin-top:8px"><span id="dataUsed">0.9</span><small> GB used of 1.5 GB</small></p>
+        </div>
+        <span class="pill ok" id="dataPill">0.6 GB left</span>
+      </div>
+      <div class="gauge-bar"><i id="dataBar" style="width:60%"></i></div>
+      <label class="small" for="dataSlider" style="font-weight:700">Log today's usage</label>
+      <input type="range" id="dataSlider" min="0" max="1.5" step="0.1" value="0.9" oninput="RechargeKit.setDataToday(this.value)">
+      <p class="data-note" id="dataNote">At this pace you will finish the day with 0.6 GB to spare. Heavy video after 9 PM is what usually eats the last of it.</p>
+    </div>
+    <div class="card chart-card">
+      <p class="eyebrow">Last 7 days</p>
+      <h3 style="font-size:19px;margin:6px 0 2px">Daily data, against the 1.5 GB line</h3>
+      <p class="small mut">Two days hit the full quota this week — both were video-call days.</p>
+      <canvas id="usageChart" width="640" height="380" aria-label="Bar chart of daily data usage for the last 7 days"></canvas>
+      <div class="legend"><span><i style="background:#c98a2e"></i>Used (GB)</span><span><i style="background:#b3372a"></i>Daily quota 1.5 GB</span><span id="weekAvg">Week total 8.5 GB · avg 1.2 GB/day</span></div>
+    </div>
+  </div>
+</section>
 <!-- @@NEXT@@ -->
