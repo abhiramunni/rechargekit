@@ -213,3 +213,66 @@ footer .fine{font-size:12.5px;color:var(--mut);max-width:520px}
 </style>
 </head>
 <body>
+<!-- cinematic intro -->
+<div id="intro" role="dialog" aria-label="Welcome">
+  <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <h1>Recharge<span>Kit</span></h1>
+  <p>Every recharge, every validity date, every rupee — in one calm place.</p>
+  <div class="prog"><i id="introBar"></i></div>
+  <button id="introSkip" onclick="RechargeKit.skipIntro()">Skip intro</button>
+</div>
+
+<!-- onboarding coach -->
+<div id="coach" role="dialog" aria-label="Quick tour">
+  <div class="card">
+    <p class="eyebrow">Quick tour</p>
+    <h3 id="coachTitle" style="font-size:24px;margin-top:6px">Your connections, at a glance</h3>
+    <p id="coachText" class="small" style="color:var(--ink2);margin-top:8px">Each card shows how many days of validity are left. Tap any card to see the plan, the data and the recharge history for that connection.</p>
+    <div class="dots"><i class="on"></i><i></i><i></i></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn ghost sm" onclick="RechargeKit.coachSkip()">Skip tour</button>
+      <button class="btn sm" id="coachNext" onclick="RechargeKit.coachNext()">Next</button>
+    </div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="logo"><span class="sig"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M5 20v-4M10 20v-8M15 20V8M20 20V4"/></svg></span>RechargeKit</div>
+    <nav class="topnav">
+      <a href="#connections">Connections</a>
+      <a href="#data">Data</a>
+      <a href="#finder">Plan finder</a>
+      <a href="#log">Recharges</a>
+      <a href="#guides">Guides</a>
+    </nav>
+    <span class="streak-chip" id="topChip">4 connections</span>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="photo"><img src="{{HERO_IMG}}" alt="Phone on a desk in warm evening light, with SIM cards and a notebook"></div>
+  <div class="copy"><div class="wrap">
+    <p class="eyebrow" style="color:var(--gold)">Mobile · DTH · Broadband</p>
+    <h1>Never miss a recharge <em>again.</em></h1>
+    <p class="sub">Validity dates, daily data, plan prices and what you actually spend — tracked before the network cuts off, not after.</p>
+  </div></div>
+</section>
+
+<div class="wrap next-card">
+  <div class="card">
+    <div>
+      <p class="eyebrow">Next recharge due</p>
+      <p class="big" id="nextLine">Jio — Primary mobile expires in <b>4 days</b></p>
+      <p class="small mut" id="nextSub" style="margin-top:4px">₹299 plan · 1.5 GB a day · recharged 28 Oct 2026</p>
+      <div class="attention" id="nextWarn">Recharge in the next 4 days to keep the number active — a lapsed prepaid SIM can be disconnected after 90 days of no recharge.</div>
+    </div>
+    <div class="cd" aria-label="Countdown to next expiry">
+      <div><b id="cdD">4</b><span>days</span></div>
+      <div><b id="cdH">00</b><span>hrs</span></div>
+      <div><b id="cdM">00</b><span>min</span></div>
+      <div><b id="cdS">00</b><span>sec</span></div>
+    </div>
+  </div>
+</div>
+<!-- @@NEXT@@ -->
