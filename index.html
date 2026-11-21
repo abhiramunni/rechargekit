@@ -515,4 +515,89 @@ try {
 if (!state || !state.conns) state = seedState();
 function save(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){} }
 save(); // persist the seed on first boot so a refresh keeps the same data
+
+/* ---------- derived ---------- */
+function nextConn(){
+  if (!state.conns.length) return null;
+  var sorted = state.conns.slice().sort(function(a,b){ return daysUntil(a.validTill) - daysUntil(b.validTill); });
+  return sorted[0];
+}
+function statusOf(c){
+  var d = daysUntil(c.validTill);
+  if (d < 0) return {cls:'bad', label:'Expired ' + (-d) + 'd ago'};
+  if (d <= 3) return {cls:'soon', label:d === 0 ? 'Expires today' : 'Expires in ' + d + 'd'};
+  if (d <= 7) return {cls:'soon', label:d + ' days left'};
+  return {cls:'ok', label:d + ' days left'};
+}
+function ringSVG(days, total, color){
+  var C = 2 * Math.PI * 32;
+  var frac = total > 0 ? Math.max(0, Math.min(1, days / total)) : 0;
+  var off = (C * (1 - frac)).toFixed(1);
+  return '<svg width="76" height="76" viewBox="0 0 76 76"><circle cx="38" cy="38" r="32" fill="none" stroke="#efe6d2" stroke-width="8"/><circle cx="38" cy="38" r="32" fill="none" stroke="'+color+'" stroke-width="8" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off+'"/></svg>';
+}
+
+/* ---------- render: hero ---------- */
+function renderHero(){
+  var n = nextConn();
+  var line = $('#nextLine'), sub = $('#nextSub'), warn = $('#nextWarn');
+  if (!n) {
+    if (line) line.textContent = 'No connections yet — add your first one below.';
+    if (sub) sub.textContent = '';
+    if (warn) warn.style.display = 'none';
+    return;
+  }
+  var d = daysUntil(n.validTill);
+  if (line) line.innerHTML = esc(n.name) + ' expires in <b>' + (d < 0 ? 'expired' : d + ' day' + (d === 1 ? '' : 's')) + '</b>';
+  if (sub) sub.textContent = n.plan + ' · recharged ' + fmtDate(n.recharged) + ' · valid till ' + fmtDate(n.validTill);
+  if (warn) {
+    warn.style.display = '';
+    if (d < 0) { warn.innerHTML = '<b>This connection has expired.</b> Recharge today to keep the number active — a lapsed prepaid SIM can be disconnected after 90 days of no recharge.'; }
+    else if (d <= 3) { warn.innerHTML = '<b>Recharge in the next ' + d + ' day' + (d === 1 ? '' : 's') + ' to keep the number active.</b> A lapsed prepaid SIM can be disconnected after 90 days of no recharge.'; }
+    else { warn.innerHTML = 'All good for now — the next recharge is due in ' + d + ' days. Set a reminder 3 days before, so it never sneaks up on you.'; }
+  }
+  var chip = $('#topChip');
+  if (chip) chip.textContent = state.conns.length + ' connection' + (state.conns.length === 1 ? '' : 's');
+}
+function tickCountdown(){
+  var n = nextConn();
+  var dEl = $('#cdD'), hEl = $('#cdH'), mEl = $('#cdM'), sEl = $('#cdS');
+  if (!n || !dEl) return;
+  var target = parseLocal(n.validTill); target.setHours(23, 59, 59, 999);
+  var ms = Math.max(0, target - new Date());
+  var d = Math.floor(ms / 86400000);
+  var h = Math.floor(ms / 3600000) % 24;
+  var m = Math.floor(ms / 60000) % 60;
+  var s = Math.floor(ms / 1000) % 60;
+  dEl.textContent = d; hEl.textContent = String(h).padStart(2, '0');
+  mEl.textContent = String(m).padStart(2, '0'); sEl.textContent = String(s).padStart(2, '0');
+}
+
+/* ---------- render: connections ---------- */
+function renderConns(){
+  var grid = $('#connGrid');
+  if (!grid) return;
+  if (!state.conns.length) {
+    grid.innerHTML = '<div class="card" style="padding:24px;grid-column:1/-1"><p style="font-weight:700">No connections yet.</p><p class="small mut">Add your mobile, broadband or DTH connection and RechargeKit will watch its validity for you.</p></div>';
+    return;
+  }
+  var sorted = state.conns.slice().sort(function(a,b){ return daysUntil(a.validTill) - daysUntil(b.validTill); });
+  grid.innerHTML = sorted.map(function(c){
+    var d = daysUntil(c.validTill);
+    var st = statusOf(c);
+    var color = OP_COLORS[c.op] || OP_COLORS.Other;
+    var dataLine = c.dataPerDay > 0
+      ? '<b>' + c.dataPerDay + ' GB</b> a day · ' + inr(c.price) + ' per ' + c.validity + ' days'
+      : inr(c.price) + ' per ' + (c.type === 'Broadband' ? 'month' : c.validity + ' days');
+    return '<article class="card conn" onclick="RechargeKit.openConn(\'' + c.id + '\')" tabindex="0" role="button" aria-label="' + esc(c.name) + ', ' + st.label + '">' +
+      '<div class="op"><span class="dot" style="background:' + color + '">' + esc(c.op.slice(0,2)) + '</span>' +
+      '<div><h3>' + esc(c.name) + '</h3><div class="type">' + esc(c.type) + '</div></div>' +
+      '<span class="pill ' + st.cls + '" style="margin-left:auto">' + st.label + '</span></div>' +
+      '<div class="ring-row"><div class="ring">' + ringSVG(Math.max(0,d), c.validity, d < 0 ? '#b3372a' : (d <= 3 ? '#c05b2e' : '#c98a2e')) +
+      '<div class="n"><b>' + Math.max(0,d) + '</b><span>days</span></div></div>' +
+      '<p class="meta">' + esc(c.plan) + '<br>' + dataLine + '<br>Valid till <b>' + fmtDate(c.validTill) + '</b></p></div>' +
+      '<div class="foot"><button class="chip-btn primary" onclick="event.stopPropagation();RechargeKit.markRecharged(\'' + c.id + '\')">Recharged</button>' +
+      '<button class="chip-btn" onclick="event.stopPropagation();RechargeKit.openConn(\'' + c.id + '\')">Details</button></div>' +
+      '</article>';
+  }).join('');
+}
 <!-- @@NEXT@@ -->
