@@ -760,4 +760,159 @@ function deleteConn(id){
   save(); closeSheet(); renderAll();
   toast('Connection removed');
 }
+
+/* ---------- sheets & forms ---------- */
+function openSheet(){ var b = $('#sheetBack'); if (b) b.classList.add('show'); }
+function closeSheet(){ var b = $('#sheetBack'); if (b) b.classList.remove('show'); }
+function openConn(id){
+  var c = null;
+  state.conns.forEach(function(x){ if (x.id === id) c = x; });
+  if (!c) return;
+  var d = daysUntil(c.validTill);
+  var st = statusOf(c);
+  var history = state.log.filter(function(e){ return e.conn === c.name; });
+  $('#sheetBody').innerHTML =
+    '<p class="eyebrow">' + esc(c.type) + '</p>' +
+    '<h3>' + esc(c.name) + '</h3>' +
+    '<p class="small mut">' + esc(c.plan) + ' · <span class="pill ' + st.cls + '">' + st.label + '</span></p>' +
+    '<dl class="kv">' +
+    '<dt>Valid till</dt><dd>' + fmtDate(c.validTill) + ' (' + (d < 0 ? 'expired ' + (-d) + 'd ago' : d + ' days left') + ')</dd>' +
+    '<dt>Last recharged</dt><dd>' + fmtDate(c.recharged) + '</dd>' +
+    '<dt>Plan price</dt><dd>' + inr(c.price) + ' per ' + c.validity + ' days</dd>' +
+    (c.dataPerDay > 0 ? '<dt>Daily data</dt><dd>' + c.dataPerDay + ' GB a day</dd>' : '') +
+    '<dt>Recharges logged</dt><dd>' + history.length + ' · ' + inr(history.reduce(function(s,e){ return s + e.amount; }, 0)) + ' total</dd>' +
+    '</dl>' +
+    '<div class="actions">' +
+    '<button class="btn terra" onclick="RechargeKit.markRecharged(\'' + c.id + '\');RechargeKit.closeSheet()">Mark as recharged</button>' +
+    '<button class="btn ghost" onclick="RechargeKit.deleteConn(\'' + c.id + '\')">Remove connection</button>' +
+    '</div>';
+  openSheet();
+}
+function openConnForm(){
+  $('#sheetBody').innerHTML =
+    '<p class="eyebrow">Add a connection</p><h3>What do you pay for?</h3>' +
+    '<p class="small mut">Mobile, broadband or DTH — add it once and RechargeKit watches the date.</p>' +
+    '<div class="form-grid" style="margin-top:16px">' +
+    '<div class="field"><label>Name</label><input id="cfName" placeholder="e.g. Jio — Work SIM"></div>' +
+    '<div class="field"><label>Operator</label><select id="cfOp"><option>Jio</option><option>Airtel</option><option>Vi</option><option>BSNL</option><option>Tata Play</option><option>Other</option></select></div>' +
+    '<div class="field"><label>Type</label><select id="cfType"><option>Prepaid mobile</option><option>Broadband</option><option>DTH</option></select></div>' +
+    '<div class="field"><label>Plan (as shown)</label><input id="cfPlan" placeholder="e.g. ₹299 · 1.5 GB/day"></div>' +
+    '<div class="field"><label>Price (₹)</label><input id="cfPrice" type="number" min="1" value="299"></div>' +
+    '<div class="field"><label>Daily data (GB, 0 if none)</label><input id="cfData" type="number" min="0" step="0.5" value="1.5"></div>' +
+    '<div class="field"><label>Validity (days)</label><input id="cfVal" type="number" min="1" value="28"></div>' +
+    '<div class="field"><label>Valid till</label><input id="cfTill" type="date" value="2026-12-19"></div>' +
+    '</div>' +
+    '<div class="actions"><button class="btn terra" onclick="RechargeKit.saveConn()">Save connection</button>' +
+    '<button class="btn ghost" onclick="RechargeKit.closeSheet()">Cancel</button></div>';
+  openSheet();
+}
+function saveConn(){
+  var name = ($('#cfName').value || '').trim();
+  if (!name) { toast('Give the connection a name first'); return; }
+  var price = parseInt($('#cfPrice').value, 10) || 0;
+  var val = parseInt($('#cfVal').value, 10) || 28;
+  var till = $('#cfTill').value || todayISO();
+  var recharged = isoLocal(new Date(parseLocal(till).getTime() - val * 86400000));
+  state.conns.push({
+    id: 'c' + Date.now(), op: $('#cfOp').value, name: name, type: $('#cfType').value,
+    plan: ($('#cfPlan').value || '').trim() || (inr(price) + ' plan'),
+    price: price, dataPerDay: parseFloat($('#cfData').value) || 0, validity: val,
+    recharged: recharged, validTill: till, sample: false
+  });
+  save(); closeSheet(); renderAll();
+  toast(name + ' added — valid till ' + fmtDate(till));
+}
+function openLogForm(){
+  var opts = state.conns.map(function(c){ return '<option>' + esc(c.name) + '</option>'; }).join('');
+  $('#sheetBody').innerHTML =
+    '<p class="eyebrow">Log a recharge</p><h3>What did you pay?</h3>' +
+    '<div class="form-grid" style="margin-top:16px">' +
+    '<div class="field"><label>Connection</label><select id="lfConn">' + opts + '</select></div>' +
+    '<div class="field"><label>Amount (₹)</label><input id="lfAmt" type="number" min="1" value="299"></div>' +
+    '<div class="field"><label>Date</label><input id="lfDate" type="date" value="' + todayISO() + '"></div>' +
+    '</div>' +
+    '<div class="actions"><button class="btn terra" onclick="RechargeKit.saveLog()">Save recharge</button>' +
+    '<button class="btn ghost" onclick="RechargeKit.closeSheet()">Cancel</button></div>';
+  openSheet();
+}
+function saveLog(){
+  var amt = parseInt($('#lfAmt').value, 10) || 0;
+  if (amt <= 0) { toast('Enter the amount you paid'); return; }
+  state.log.unshift({date: $('#lfDate').value || todayISO(), conn: $('#lfConn').value, amount: amt, sample:false});
+  save(); closeSheet(); renderAll();
+  toast('Recharge of ' + inr(amt) + ' logged');
+}
+function editBudget(){
+  $('#sheetBody').innerHTML =
+    '<p class="eyebrow">Monthly budget</p><h3>How much may recharges cost a month?</h3>' +
+    '<p class="small mut">A full cycle of your current connections costs ' + inr(state.conns.reduce(function(s,c){ return s + c.price; }, 0)) + '.</p>' +
+    '<div class="field" style="margin-top:16px"><label>Budget (₹ per month)</label><input id="bfAmt" type="number" min="100" step="100" value="' + state.budget + '"></div>' +
+    '<div class="actions"><button class="btn terra" onclick="RechargeKit.saveBudget()">Save budget</button>' +
+    '<button class="btn ghost" onclick="RechargeKit.closeSheet()">Cancel</button></div>';
+  openSheet();
+}
+function saveBudget(){
+  var v = parseInt($('#bfAmt').value, 10);
+  if (v > 0) { state.budget = v; save(); renderSpend(); }
+  closeSheet();
+  toast('Monthly budget set to ' + inr(state.budget));
+}
+
+/* ---------- guides, summary, samples ---------- */
+function renderGuides(){
+  var g = $('#guideGrid');
+  if (!g) return;
+  g.innerHTML = GUIDES.map(function(x){
+    return '<article class="card guide"><div class="g-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg></div><h3>' + esc(x.t) + '</h3><p>' + esc(x.d) + '</p></article>';
+  }).join('');
+}
+function summaryText(){
+  var lines = ['RECHARGEKIT — MY RECHARGES'];
+  lines.push('Next due: ' + (nextConn() ? nextConn().name + ' — ' + fmtDate(nextConn().validTill) + ' (' + Math.max(0, daysUntil(nextConn().validTill)) + ' days left)' : 'none'));
+  state.conns.forEach(function(c){
+    lines.push('- ' + c.name + ': ' + c.plan + ', valid till ' + fmtDate(c.validTill));
+  });
+  lines.push('Spent in ' + new Date().toLocaleString('en-IN', {month:'long', year:'numeric'}) + ': ' + inr(monthSpend()) + ' of ' + inr(state.budget) + ' budget');
+  lines.push('Today\'s data: ' + state.dataToday.toFixed(1) + ' GB used');
+  return lines.join('\n');
+}
+function copySummary(){
+  var text = summaryText();
+  function done(){ toast('Summary copied — paste it anywhere'); }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, function(){ fallback(); }); }
+    else fallback();
+  } catch(e){ fallback(); }
+  function fallback(){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta); done();
+    } catch(e2){ toast('Copy did not work here — select the text manually'); }
+  }
+}
+var eraseArmed = false;
+function removeSamples(){
+  state.conns = state.conns.filter(function(c){ return !c.sample; });
+  state.log = state.log.filter(function(e){ return !e.sample; });
+  state.samples = false;
+  save(); renderAll();
+  toast('Sample data removed — your own entries stay');
+}
+function eraseAll(){
+  if (!eraseArmed) {
+    eraseArmed = true;
+    toast('Tap "Erase everything" again to confirm — this clears all your data');
+    setTimeout(function(){ eraseArmed = false; }, 4000);
+    return;
+  }
+  eraseArmed = false;
+  try { localStorage.removeItem(LS_KEY); } catch(e){}
+  // Mutate the existing state object in place — reassigning `state` would
+  // leave window.RechargeKit.state pointing at the old object.
+  state.v = 1; state.samples = false; state.budget = 1500; state.dataToday = 0;
+  state.usage = [0,0,0,0,0,0,0]; state.conns = []; state.log = [];
+  save(); renderAll();
+  toast('Everything erased — a fresh start');
+}
 <!-- @@NEXT@@ -->
