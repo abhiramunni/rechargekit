@@ -984,4 +984,23 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-<!-- @@NEXT@@ -->
+
+window.RechargeKit = {
+  state: state, PLANS: PLANS, GUIDES: GUIDES,
+  daysUntil: daysUntil, fmtDate: fmtDate, inr: inr, perDay: perDay,
+  nextConn: nextConn, statusOf: statusOf, monthSpend: monthSpend, planRows: planRows,
+  renderAll: renderAll, renderPlans: renderPlans, renderData: renderData,
+  setDataToday: setDataToday, markRecharged: markRecharged,
+  openConn: openConn, openSheet: openSheet, closeSheet: closeSheet,
+  openConnForm: openConnForm, saveConn: saveConn,
+  openLogForm: openLogForm, saveLog: saveLog, deleteConn: deleteConn,
+  editBudget: editBudget, saveBudget: saveBudget,
+  copySummary: copySummary, summaryText: summaryText,
+  removeSamples: removeSamples, eraseAll: eraseAll,
+  startCoach: startCoach, coachNext: coachNext, coachSkip: coachSkip,
+  skipIntro: skipIntro
+};
+})();
+</script>
+</body>
+</html>
