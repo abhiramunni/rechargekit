@@ -600,4 +600,92 @@ function renderConns(){
       '</article>';
   }).join('');
 }
+
+/* ---------- render: data ---------- */
+function renderData(){
+  var jio = null;
+  state.conns.forEach(function(c){ if (c.op === 'Jio' && c.dataPerDay > 0 && !jio) jio = c; });
+  var quota = jio ? jio.dataPerDay : 1.5;
+  var used = Math.min(state.dataToday, quota);
+  var left = Math.max(0, quota - used);
+  var pct = Math.round((used / quota) * 100);
+  var usedEl = $('#dataUsed'); if (usedEl) usedEl.textContent = used.toFixed(1);
+  var bar = $('#dataBar'); if (bar) bar.style.width = pct + '%';
+  var pill = $('#dataPill');
+  if (pill) {
+    pill.textContent = left.toFixed(1) + ' GB left';
+    pill.className = 'pill ' + (left <= 0.2 ? 'bad' : (left <= 0.5 ? 'soon' : 'ok'));
+  }
+  var note = $('#dataNote');
+  if (note) {
+    note.textContent = left <= 0
+      ? 'Today\'s data is finished. The plan renews at midnight — until then, use Wi-Fi or a small data add-on.'
+      : 'At this pace you will finish the day with ' + left.toFixed(1) + ' GB to spare. Heavy video after 9 PM is what usually eats the last of it.';
+  }
+  var slider = $('#dataSlider');
+  if (slider) { slider.max = quota; slider.value = state.dataToday; }
+  var total = state.usage.reduce(function(a,b){ return a + b; }, 0);
+  var avg = $('#weekAvg');
+  if (avg) avg.textContent = 'Week total ' + total.toFixed(1) + ' GB · avg ' + (total / 7).toFixed(1) + ' GB/day';
+  drawChart(quota);
+}
+function drawChart(quota){
+  var cv = $('#usageChart');
+  if (!cv) return;
+  var ctx = null;
+  try { ctx = cv.getContext('2d'); } catch(e){ ctx = null; }
+  if (!ctx) return;
+  var W = cv.width, H = cv.height, pad = 34;
+  ctx.clearRect(0, 0, W, H);
+  var max = Math.max(quota * 1.15, 2);
+  var bw = (W - pad * 2) / 7;
+  var days = ['15','16','17','18','19','20','21'];
+  state.usage.forEach(function(v, i){
+    var h = (v / max) * (H - pad * 2);
+    var x = pad + i * bw + bw * 0.18;
+    ctx.fillStyle = v >= quota ? '#b3372a' : '#c98a2e';
+    ctx.fillRect(x, H - pad - h, bw * 0.64, h);
+    ctx.fillStyle = '#8a7661'; ctx.font = '20px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(v.toFixed(1), x + bw * 0.32, H - pad - h - 8);
+    ctx.fillText(days[i] + ' Nov', x + bw * 0.32, H - 10);
+  });
+  var qy = H - pad - (quota / max) * (H - pad * 2);
+  ctx.strokeStyle = '#b3372a'; ctx.setLineDash([8, 6]); ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, qy); ctx.lineTo(W - pad, qy); ctx.stroke();
+  ctx.setLineDash([]);
+}
+function setDataToday(v){
+  state.dataToday = Math.round(parseFloat(v) * 10) / 10;
+  state.usage[6] = state.dataToday;
+  save(); renderData();
+}
+
+/* ---------- render: plan finder ---------- */
+function planRows(){
+  var op = ($('#fOp') || {}).value || 'Any';
+  var minData = parseFloat(($('#fData') || {}).value || '1.5');
+  var minVal = parseInt((($('#fVal') || {}).value || '28'), 10);
+  return PLANS.filter(function(p){
+    return (op === 'Any' || p.op === op) && p.data >= minData && p.val >= minVal;
+  }).sort(function(a, b){ return perDay(a) - perDay(b); });
+}
+function renderPlans(){
+  var list = $('#planList');
+  if (!list) return;
+  var rows = planRows();
+  if (!rows.length) {
+    list.innerHTML = '<div style="background:rgba(253,248,238,.97);color:var(--ink);border-radius:14px;padding:18px"><b>No plan matches those filters.</b><br><span class="small mut">Try a shorter validity or less daily data — long-validity plans are usually the cheapest per day.</span></div>';
+    return;
+  }
+  var best = perDay(rows[0]);
+  list.innerHTML = rows.map(function(p){
+    var color = OP_COLORS[p.op] || OP_COLORS.Other;
+    var badge = perDay(p) === best ? '<span class="best">Best value</span>' : '';
+    return '<div class="plan"><span class="p-op" style="background:' + color + '">' + esc(p.op.slice(0,2)) + '</span>' +
+      '<div><div class="p-name">' + esc(p.op) + ' ' + inr(p.price) + ' ' + badge + '</div>' +
+      '<div class="p-det">' + p.data + ' GB a day · ' + p.val + ' days · ' + esc(p.note) + '</div></div>' +
+      '<div class="p-price"><b>' + inr(perDay(p)) + '</b><span>per day</span></div>' +
+      '<div class="p-price"><b>' + inr(p.price / (p.data * p.val)) + '</b><span>per GB</span></div></div>';
+  }).join('');
+}
 <!-- @@NEXT@@ -->
