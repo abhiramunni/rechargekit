@@ -688,4 +688,76 @@ function renderPlans(){
       '<div class="p-price"><b>' + inr(p.price / (p.data * p.val)) + '</b><span>per GB</span></div></div>';
   }).join('');
 }
+
+/* ---------- render: log + spend ---------- */
+function monthSpend(){
+  var now = new Date();
+  var ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  return state.log.reduce(function(sum, e){
+    return e.date.slice(0, 7) === ym ? sum + e.amount : sum;
+  }, 0);
+}
+function renderLog(){
+  var rows = $('#logRows');
+  if (rows) {
+    rows.innerHTML = state.log.slice(0, 8).map(function(e, i){
+      return '<div class="log-row"><div><div class="lr-name">' + esc(e.conn) + '</div><div class="lr-det">' + fmtDate(e.date) + '</div></div>' +
+        '<span></span><span class="lr-amt">' + inr(e.amount) + '</span></div>';
+    }).join('') || '<p class="small mut">No recharges logged yet.</p>';
+  }
+  var lc = $('#logCount');
+  if (lc) lc.textContent = state.log.length + ' recharge' + (state.log.length === 1 ? '' : 's');
+}
+function renderSpend(){
+  var spent = monthSpend();
+  var budget = state.budget || 1500;
+  var pct = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+  var ms = $('#monthSpend'); if (ms) ms.textContent = spent.toLocaleString('en-IN');
+  var bv = $('#budgetVal'); if (bv) bv.textContent = budget.toLocaleString('en-IN');
+  var bp = $('#budgetPct'); if (bp) bp.textContent = Math.min(pct, 999) + '%';
+  var ring = $('#budgetRing');
+  if (ring) ring.setAttribute('stroke-dashoffset', (276.5 * (1 - Math.min(pct, 100) / 100)).toFixed(1));
+  var note = $('#budgetNote');
+  if (note) {
+    var left = budget - spent;
+    var nxt = nextConn();
+    var nxtTxt = nxt ? 'The ' + nxt.op + ' ' + inr(nxt.price) + ' recharge due ' + fmtDate(nxt.validTill) + ' still leaves ' + inr(Math.max(0, left - nxt.price)) + ' to spare.' : '';
+    note.textContent = left >= 0
+      ? inr(left) + ' left in the budget. ' + nxtTxt
+      : 'You are ' + inr(-left) + ' over budget this month. Check whether a longer-validity plan would cost less next month.';
+  }
+  var bars = $('#spendBars');
+  if (bars) {
+    var cats = {};
+    state.conns.forEach(function(c){
+      var k = c.type;
+      cats[k] = (cats[k] || 0) + c.price;
+    });
+    var max = Math.max.apply(null, Object.keys(cats).map(function(k){ return cats[k]; }).concat([1]));
+    var colors = {'Prepaid mobile':'#c98a2e', 'Broadband':'#c05b2e', 'DTH':'#8a6d1f'};
+    bars.innerHTML = '<p class="small" style="font-weight:700">What one cycle of each costs</p>' + Object.keys(cats).map(function(k){
+      return '<div class="row"><span>' + esc(k) + '</span><span class="bar"><i style="width:' + Math.round((cats[k] / max) * 100) + '%;background:' + (colors[k] || '#5d4a36') + '"></i></span><b>' + inr(cats[k]) + '</b></div>';
+    }).join('') + '<p class="small mut">A full cycle of all connections costs ' + inr(Object.keys(cats).reduce(function(s,k){ return s + cats[k]; }, 0)) + '.</p>';
+  }
+}
+
+/* ---------- actions ---------- */
+function markRecharged(id){
+  var c = null;
+  state.conns.forEach(function(x){ if (x.id === id) c = x; });
+  if (!c) return;
+  var base = daysUntil(c.validTill) < 0 ? startOfToday() : parseLocal(c.validTill);
+  var next = new Date(base.getTime());
+  next.setDate(next.getDate() + c.validity);
+  c.recharged = todayISO();
+  c.validTill = isoLocal(next);
+  state.log.unshift({date: todayISO(), conn: c.name, amount: c.price, sample:false});
+  save(); renderAll();
+  toast(c.op + ' recharged — valid till ' + fmtDate(c.validTill));
+}
+function deleteConn(id){
+  state.conns = state.conns.filter(function(c){ return c.id !== id; });
+  save(); closeSheet(); renderAll();
+  toast('Connection removed');
+}
 <!-- @@NEXT@@ -->
