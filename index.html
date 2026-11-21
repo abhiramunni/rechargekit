@@ -383,4 +383,59 @@ footer .fine{font-size:12.5px;color:var(--mut);max-width:520px}
     </div>
   </div>
 </section>
+<section class="sec" id="guides">
+  <div class="sec-head">
+    <div>
+      <p class="eyebrow">Good to know</p>
+      <h2>Recharge smarts, in plain words.</h2>
+      <p>Six things worth knowing before your next recharge — no jargon, no fine print.</p>
+    </div>
+  </div>
+  <div class="guide-grid" id="guideGrid"></div>
+</section>
+
+<div class="photo-band">
+  <img src="{{FLATLAY_IMG}}" alt="Flat lay of a phone, Wi-Fi router, TV remote, SIM cards and a charging cable">
+  <div class="cap">
+    <h3>One shelf for every connection you pay for.</h3>
+    <p>Mobile, broadband and DTH all expire on different days. RechargeKit keeps the dates in one place so nothing catches you by surprise.</p>
+  </div>
+</div>
+
+<section class="sec" id="settings">
+  <div class="sec-head">
+    <div>
+      <p class="eyebrow">Your data, your device</p>
+      <h2>Everything lives on this device.</h2>
+      <p>No account, no cloud, no tracking. Your connections and recharge history never leave this browser.</p>
+    </div>
+  </div>
+  <div class="card" style="padding:22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <button class="btn" onclick="RechargeKit.copySummary()">Copy my summary</button>
+    <button class="btn ghost" onclick="RechargeKit.removeSamples()">Remove sample data</button>
+    <button class="btn ghost" onclick="RechargeKit.eraseAll()">Erase everything</button>
+    <button class="btn ghost" onclick="RechargeKit.startCoach()">Replay the tour</button>
+    <span class="small mut" id="saveState">Saved on this device · 4 sample connections loaded</span>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="logo" style="font-size:18px"><span class="sig" style="width:30px;height:30px"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M5 20v-4M10 20v-8M15 20V8M20 20V4"/></svg></span>RechargeKit</div>
+      <p class="fine" style="margin-top:8px">Plan prices are indicative November 2026 tariffs and change often — always confirm the price in the operator's own app before paying. RechargeKit is a personal tracker, not an operator or a payment service.</p>
+    </div>
+    <p class="fine">Built as a single file · works offline · your data stays in your browser</p>
+  </div>
+</footer>
+
+<!-- detail sheet -->
+<div class="sheet-back" id="sheetBack" onclick="if(event.target===this)RechargeKit.closeSheet()">
+  <div class="sheet">
+    <button class="x" aria-label="Close" onclick="RechargeKit.closeSheet()">×</button>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 <!-- @@NEXT@@ -->
