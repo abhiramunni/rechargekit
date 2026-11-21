@@ -915,4 +915,73 @@ function eraseAll(){
   save(); renderAll();
   toast('Everything erased — a fresh start');
 }
+
+/* ---------- intro + coach ---------- */
+var introTimer = null;
+function runIntro(quick){
+  var intro = $('#intro');
+  if (!intro) return;
+  var bar = $('#introBar');
+  var dur = quick ? 900 : 4000;
+  var start = Date.now();
+  function step(){
+    var p = Math.min(1, (Date.now() - start) / dur);
+    if (bar) bar.style.width = Math.round(p * 100) + '%';
+    if (p < 1) { introTimer = setTimeout(step, 60); }
+    else skipIntro();
+  }
+  step();
+}
+function skipIntro(){
+  if (introTimer) { clearTimeout(introTimer); introTimer = null; }
+  var intro = $('#intro');
+  if (intro) intro.classList.add('hide');
+  try { localStorage.setItem('rechargekit-visited', '1'); } catch(e){}
+}
+var COACH = [
+  {t:'Your connections, at a glance', x:'Each card shows how many days of validity are left. Tap any card to see the plan, the data and the recharge history for that connection.'},
+  {t:'Log today\'s data honestly', x:'The gauge tracks your Jio daily quota. One honest tap a day keeps the 1.5 GB line meaningful — and the week chart shows your real pattern.'},
+  {t:'Compare plans by rupees per day', x:'The plan finder ranks every plan by cost per day, so a ₹899 90-day plan can be fairly compared with a ₹299 28-day one. Best value gets the badge.'}
+];
+var coachStep = 0;
+function startCoach(){
+  coachStep = 0;
+  paintCoach();
+  var c = $('#coach'); if (c) c.classList.add('show');
+}
+function paintCoach(){
+  var s = COACH[coachStep];
+  var t = $('#coachTitle'); if (t) t.textContent = s.t;
+  var x = $('#coachText'); if (x) x.textContent = s.x;
+  $all('#coach .dots i').forEach(function(d, i){ d.classList.toggle('on', i === coachStep); });
+  var n = $('#coachNext'); if (n) n.textContent = coachStep === COACH.length - 1 ? 'Done' : 'Next';
+}
+function coachNext(){
+  if (coachStep < COACH.length - 1) { coachStep++; paintCoach(); }
+  else coachSkip();
+}
+function coachSkip(){
+  var c = $('#coach'); if (c) c.classList.remove('show');
+}
+
+/* ---------- boot ---------- */
+function renderAll(){
+  renderHero(); renderConns(); renderData(); renderPlans(); renderLog(); renderSpend(); renderGuides();
+  var ss = $('#saveState');
+  if (ss) ss.textContent = 'Saved on this device · ' + state.conns.length + ' connection' + (state.conns.length === 1 ? '' : 's') + ' · ' + state.log.length + ' recharges logged';
+}
+function init(){
+  renderAll();
+  tickCountdown();
+  setInterval(tickCountdown, 1000);
+  var visited = null;
+  try { visited = localStorage.getItem('rechargekit-visited'); } catch(e){}
+  runIntro(!!visited);
+  if (!visited) { setTimeout(startCoach, 4300); }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 <!-- @@NEXT@@ -->
